@@ -6,6 +6,7 @@ from typing import Callable
 class HookEvent(Enum):
     """钩子事件类型。"""
     DeBug  = "DeBug" # 调试钩子
+    SessionStart = "SeessionStart" # 回话开始
     UserPromptSubmit = "UserPromptSubmit" # 用户提示词输入钩子
     PreToolUse = "PreToolUse" # 工具调用前钩子
     PostToolUse = "PostToolUse" # 工具调用后钩子
@@ -13,6 +14,7 @@ class HookEvent(Enum):
 
 HOOKS: dict[HookEvent, list[Callable]] = {
     HookEvent.DeBug: [],
+    HookEvent.SessionStart: [],
     HookEvent.UserPromptSubmit: [],
     HookEvent.PreToolUse: [],
     HookEvent.PostToolUse: [],
