@@ -9,7 +9,19 @@ wheels/
 # Virtual environments
 .venv
 
+# Agent
+.claude
+.serena
 
 # MAC
 .DS_Store
+
+#Test
+test/
+
+#Config
+.env
+
+
+
 
