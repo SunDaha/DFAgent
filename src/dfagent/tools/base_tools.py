@@ -19,61 +19,133 @@ def safe_path(p: str) -> Path:
 
 # 基本工具定义
 @tool(name="bash")
-def run_bash(command: str) -> str:
-    """Run a shell command.
+def run_bash(command: str, timeout:int = 120000) -> str:
+    """Executes a bash command and returns its output.
+    - Working directory persists between calls, but prefer absolute paths — `cd` in a compound command can trigger a permission prompt. Shell state (env vars, functions) does not persist; the shell is initialized from the user's profile.
+    - IMPORTANT: Avoid using this tool to run `cat`, `head`, `tail`, `sed`, `awk`, or `echo` commands, unless explicitly instructed or after you have verified that a dedicated tool cannot accomplish your task. Instead, use the appropriate dedicated tool as this will provide a much better experience for the user.
+    - Command output is displayed to you, not reliably to the user.
+    - `timeout` is in milliseconds: default 120000, max 600000.
 
     Args:
-        command: The shell command to execute.
+        command: The command to execute
+        timeout: Optional timeout in milliseconds (max 600000)
     """
     
     dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /etc/"]
     if any(d in command for d in dangerous):
         return "Error: Dangerous command blocked"
+    # 毫秒转秒，且限制最大 600000ms
+    timeout_ms = max(1, min(int(timeout), 600000))
+    timeout_sec = timeout_ms / 1000
     try:
         r = subprocess.run(command, shell=True, cwd=WORKDIR,
                            capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=120)
+                           encoding="utf-8", errors="replace", timeout=timeout_sec)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
     except subprocess.TimeoutExpired:
-        return "Error: Timeout (120s)"
+        return f"Error: Timeout ({timeout_ms}ms)"
     except (FileNotFoundError, OSError) as e:
         return f"Error: {e}"
 
 @tool(name="read")
-def run_read(path: str, offset: int = 0, limit: int | None = None) -> str:
+def run_read(path: str, offset: int = 0, limit: int | None = None, pages:str = None) -> str:
     """
-    读取指定文件的内容。
+    Reads a file from the local filesystem.
+
+    - `path` must be an absolute path.
+    - Reads up to 2000 lines by default.
+    - When you already know which part of the file you need, only read that part. This can be important for larger files.
+    - Results are returned using cat -n format, with line numbers starting at 1
+    - Reads images (PNG, JPG, …) and presents them visually. Reads PDFs via the `pages` parameter (e.g. "1-5", max 20 pages/request; required for PDFs over 10 pages). Reads Jupyter notebooks (.ipynb) as cells with outputs.
+    - Reading a directory, a missing file, or an empty file returns an error or system reminder rather than content.
+    - Do NOT re-read a file you just edited to verify — Edit/Write would have errored if the change failed, and the harness tracks file state for you.
 
     Args:
         path: The path of the file to read.
         offset: The 0-indexed line number to start reading from.
         limit: Maximum number of lines to read.
+        pages: PDF page range (e.g., "1-5", max 20 pages/request; required for PDFs over 10 pages).
     """
     try:
-        # safe_path 返回经过安全校验的 pathlib.Path 对象
         file_path = safe_path(path)
-        lines = []
+        # 普通文件
+        if file_path.is_file() and file_path.suffix.lower() != ".pdf":
+            lines = []
+            with file_path.open("r", encoding="utf-8") as f:
+                for i, line in enumerate(f):
+                    if i < offset:
+                        continue
+                    if limit is not None and (i - offset) >= limit:
+                        lines.append(f"\n... [Truncated: limit of {limit} lines reached]")
+                        break
+                    lines.append(line.rstrip('\n\r'))
+            return "\n".join(lines) if lines else "(empty file)"
 
-        with file_path.open("r", encoding="utf-8") as f:
-            for i, line in enumerate(f):
-                if i < offset:
-                    continue
-                if limit is not None and (i - offset) >= limit:
-                    lines.append(f"\n... [Truncated: limit of {limit} lines reached]")
-                    break
+        # PDF
+        if file_path.suffix.lower() == ".pdf" and file_path.is_file():
+            return _read_pdf(file_path, pages)
 
-                lines.append(line.rstrip('\n\r'))
-
-        return "\n".join(lines)
-
+        if file_path.is_dir():
+            return f"Error: {path} is a directory, not a file"
+        return f"Error: {path} not found"
     except Exception as e:
         return f"Error: Failed to read file. Reason: {e}"
 
 
+def _read_pdf(path: Path, pages: str | None) -> str:
+    try:
+        from pypdf import PdfReader
+    except Exception as e:
+        return f"Error: PDF support unavailable: {e}"
+
+    try:
+        reader = PdfReader(str(path))
+        total = len(reader.pages)
+
+        if total == 0:
+            return "(empty PDF)"
+
+        # 超过 10 页时必须传 pages
+        if total > 10 and not pages:
+            return f"Error: PDF has {total} pages; set `pages` (e.g., '1-5')"
+
+        start, end = 1, total
+        if pages:
+            try:
+                if "-" in str(pages):
+                    s, e = str(pages).split("-", 1)
+                    start, end = int(s), int(e)
+                else:
+                    start = end = int(pages)
+                start = max(1, start)
+                end = min(end, total)
+                if start > end:
+                    start, end = end, start
+            except Exception:
+                return f"Error: Invalid pages={pages}"
+
+        max_pages = 20
+        if (end - start + 1) > max_pages:
+            end = start + max_pages - 1
+
+        parts = [f"PDF: {path.name} ({total} pages)"]
+        for i in range(start - 1, end):
+            parts.append(f"\n--- Page {i+1} ---\n")
+            try:
+                parts.append(reader.pages[i].extract_text() or "(no text)")
+            except Exception as e:
+                parts.append(f"(extract failed: {e})")
+        return "".join(parts)
+    except Exception as e:
+        return f"Error: Failed to read PDF. Reason: {e}"
+
+
 @tool(name="write")
 def run_write(path: str, content: str) -> str:
-    """Write content to a file.
+    """
+    Writes a file to the local filesystem, overwriting if one exists.
+    When to use: creating a new file, or fully replacing one you've already Read. Overwriting an existing file you haven't Read will fail. For partial changes, use Edit instead.
 
     Args:
         path: The path of the file to write.
@@ -90,25 +162,35 @@ def run_write(path: str, content: str) -> str:
 
 
 @tool(name="edit")
-def run_edit(path: str, old_text: str, new_text: str) -> str:
-    """Edit a file by replacing old_text with new_text.
+def run_edit(path: str, old_string: str, new_string: str, replace_all:bool = False) -> str:
+    """Performs exact string replacement in a file.
+    
+    - You must Read the file in this conversation before editing, or the call will fail.
+    - `old_string` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the Read line prefix (line number + tab) before matching.
+    - `replace_all: true` replaces every occurrence instead.
     
     Args:
-        path: The path of the file to edit.
-        old_text: The exact text to replace.
-        new_text: The replacement text.
-    
+        path: The absolute path to the file to modify
+        old_string: The text to replace
+        new_string: The text to replace it with (must be different from old_string)
+        replace_all: if true, replace every occurrence; if false (default), replace only the first match, and error if multiple matches exist.
     """
     try:
         file_path = safe_path(path)
         with file_path.open("r", encoding="utf-8") as f:
             content = f.read()
-        if old_text not in content:
+        count = content.count(old_string)
+        if count == 0:
             return f"Error: Text not found in {path}"
-        content = content.replace(old_text, new_text)
+        if replace_all:
+            content = content.replace(old_string, new_string)
+        else:
+            if count > 1:
+                return f"Error: Found {count} matches; old_string must be unique or set replace_all=true"
+            content = content.replace(old_string, new_string, 1)
         with file_path.open("w", encoding="utf-8") as f:
             f.write(content)
-        return f"Edited {path}: replaced '{old_text}' with '{new_text}'"
+        return f"Edited {path}: replaced '{old_string}' with '{new_string}'"
     except Exception as e:
         return f"Error: Failed to edit file. Reason: {e}"
 
