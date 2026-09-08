@@ -2,14 +2,15 @@ import yaml
 import re
 import json
 from pathlib import Path
-from dfagent import WORKDIR
+from dfagent import AGENTNAME,USERHOME, WORKFILE, USERNAME
 from dfagent.base.messages import BaseMessage, HumanMessage, AIMessages, ToolMessage
 from dfagent.base.model import Model
 
 # 使用config参数配置Model
 _model = Model()
 
-MEMORY_DIR = WORKDIR / ".memory"
+
+MEMORY_DIR = USERHOME / AGENTNAME / "project" / f"{USERNAME}-{WORKFILE}" / "memory"
 MEMORY_INDEX = MEMORY_DIR / "MEMORY.md"
 
 
@@ -46,7 +47,7 @@ def memory_path(filename: str, allow_index: bool = False) -> Path:
         raise ValueError("The memory index is not a memory record")
 
     root = MEMORY_DIR.resolve()
-    if not root.is_relative_to(WORKDIR.resolve()):
+    if not root.is_relative_to(USERHOME.resolve()):
         raise ValueError("Memory directory escapes the workspace")
     path = (root / filename).resolve()
     if not path.is_relative_to(root):

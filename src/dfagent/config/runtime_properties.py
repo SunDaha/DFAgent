@@ -1,7 +1,23 @@
 from pathlib import Path
+import getpass
 
-# word_dir
+# AI Agent Name
+AGENTNAME = "DFAgent"
+
+
+# work_dir
 WORKDIR = Path.cwd()
+
+# work_file
+WORKFILE = Path(WORKDIR).name
+
+# user_home
+USERHOME = Path.home()
+
+
+
+# user
+USERNAME = getpass.getuser()
 
 
 # context_compact properties
@@ -13,3 +29,4 @@ TOOL_RESULTS_DIR = WORKDIR / ".task_outputs" / "tool-results"
 
 # retries
 MAX_REACTIVE_RETRIES = 5
+
