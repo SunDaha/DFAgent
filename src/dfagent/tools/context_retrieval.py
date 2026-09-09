@@ -1,10 +1,10 @@
 """
-上下文召回TOOL    
+上下文召回TOOL
 """
 from dfagent.tools.tool import tool
 from dfagent import TOOL_RESULTS_DIR
 
-@tool(name="RetrieveToolResult", description="Retrieve a previously persisted tool result by file name.")
+@tool(name="retrieve_tool_result")
 def retrieve_tool_result(file_name: str, offset: int = 0, limit: int | None = None) -> str:
     """Retrieve a previously persisted tool result by file name.
 
