@@ -12,6 +12,7 @@ wheels/
 # Agent
 .claude
 .serena
+.task_outputs
 
 # MAC
 .DS_Store
