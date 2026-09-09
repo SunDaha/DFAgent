@@ -38,9 +38,13 @@ def run_bash(command: str, timeout:int = 120000) -> str:
     timeout_ms = max(1, min(int(timeout), 600000))
     timeout_sec = timeout_ms / 1000
     try:
-        r = subprocess.run(command, shell=True, cwd=WORKDIR,
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=timeout_sec)
+        r = subprocess.run(command, 
+                           shell=True, 
+                           cwd=WORKDIR,
+                           capture_output=True, 
+                           text=True,
+                           encoding="utf-8", 
+                           errors="replace", timeout=timeout_sec)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
     except subprocess.TimeoutExpired:
