@@ -24,15 +24,13 @@ class ReActAgent(Agent):
     # retries
     reactive_retries = 0
 
-    # todo 还未添加 自定义钩子
     def __init__(self, 
-                 client: OpenAI | Anthropic, 
-                 model_name:str | None = None,
-                 thinking_effort:str | None = None,
-                 tools:list[dict] | None = [],
+                 client: OpenAI | Anthropic,         # LLM client
+                 model_name:str | None = None,       # 模型名字
+                 thinking_effort:str | None = None,  # 思考
+                 tools:list[dict] | None = [],       # 基础工具
                  ):
         self.model = Model(client=client, model=model_name, tools=tools, thinking_effort=thinking_effort)
-    
     
     @staticmethod
     def _todo_incomplete() -> bool:
@@ -110,18 +108,23 @@ class ReActAgent(Agent):
             
             ids = []
             names = []
-            contents = []
+            outputs = []
             for tool_call in tool_calls:
-                trigger_hooks(HookEvent.PreToolUse,tool_call)
-                id, name, content = execute_tool(tool_call)
-                ids.append(id), names.append(name), contents.append(content)
+                blocked = trigger_hooks(HookEvent.PreToolUse,tool_call)
+                if blocked:
+                    ids.append(tool_call.id), names.append(tool_call.name), outputs.append(f"Blocked by hook: {blocked}")
+                    continue
+                output = execute_tool(tool_call)
+                ids.append(tool_call.id), names.append(tool_call.name), outputs.append(output)
                 
                 # write_todo 使用
-                if name == "write_todo":
+                if tool_call.name == "write_todo":
                     self.todo_active = True
                     self.rounds_since_todo = 0
             # messages 添加工具调用结果
-            messages.append(ToolMessage(id=ids,name=names,content=contents))
+            tool_message = ToolMessage(id=ids,name=names,content=outputs)
+            trigger_hooks(HookEvent.PostToolUse,tool_message)
+            messages.append(tool_message)
             
             
     def _loop_anthropic(self,messages:list[BaseMessage]):
@@ -179,18 +182,27 @@ class ReActAgent(Agent):
 
             ids = []
             names = []
-            contents = []
+            outputs = []
             for tool_call in tool_calls:
-                trigger_hooks(HookEvent.PreToolUse,tool_call)
-                id, name, content = execute_tool(tool_call)
-                ids.append(id), names.append(name), contents.append(content)
+                blocked = trigger_hooks(HookEvent.PreToolUse, tool_call)
+                if blocked:
+                    ids.append(tool_call.id)
+                    names.append(tool_call.name)
+                    outputs.append(f"Blocked by hook: {blocked}")
+                    continue
+                output = execute_tool(tool_call)
+                ids.append(tool_call.id)
+                names.append(tool_call.name)
+                outputs.append(output)
 
                 # write_todo 使用
-                if name == "write_todo":
+                if tool_call.name == "write_todo":
                     self.todo_active = True
                     self.rounds_since_todo = 0
             # messages 添加工具调用结果
-            messages.append(ToolMessage(id=ids,name=names,content=contents))
+            tool_message = ToolMessage(id=ids,name=names,content=outputs)
+            trigger_hooks(HookEvent.PostToolUse,tool_message)
+            messages.append(tool_message)
     
     
     def loop(self, messages:list[BaseMessage]):

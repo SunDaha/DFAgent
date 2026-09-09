@@ -410,7 +410,7 @@ def _format_validation_error(e: ValidationError) -> str:
     return "\n".join(lines)
 
 
-def execute_tool(tool_call:ToolCall):
+def execute_tool(tool_call:ToolCall) -> str:
     """执行一个工具
     Args:
         tool_call (ToolCall): 待执行的工具（来自 AI 消息解析）
@@ -420,7 +420,7 @@ def execute_tool(tool_call:ToolCall):
         return tool_call.id, tool_call.name, f"Error: 未找到工具: {tool_call.name}"
     
     _, result = info.execute(tool_call.args)
-    return tool_call.id, tool_call.name, str(result)
+    return str(result)
 
     
 

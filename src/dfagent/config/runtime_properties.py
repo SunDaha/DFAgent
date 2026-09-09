@@ -30,3 +30,8 @@ TOOL_RESULTS_DIR = WORKDIR / ".task_outputs" / "tool-results"
 # retries
 MAX_REACTIVE_RETRIES = 5
 
+
+#Hook
+MAX_TOOL_OUTPUR_SIZE = 100000
+
+
