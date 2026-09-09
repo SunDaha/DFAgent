@@ -3,12 +3,12 @@ from openai import OpenAI
 from anthropic import Anthropic
 from dfagent import MAX_REACTIVE_RETRIES
 from dfagent.base.model import Model
-from dfagent.base.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage, MessagesAnalysis
+from dfagent.base.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage
 from dfagent.prompt.prompt_builder import build_system
 from dfagent.context.context_compact import tool_result_budget, snip_compact, micro_compact, compact_history
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.memory.memory import extract_memories, consolidate_memories
-from dfagent.tools.tool import execute_tool
+from dfagent.tools.tool import execute_tool,execute_batch_tool
 from dfagent.tools.write_todo_tool import CURRENT_TODOS
 
 class Agent:
@@ -106,24 +106,8 @@ class ReActAgent(Agent):
                 consolidate_memories()
                 return ai_message.get_content()
             
-            ids = []
-            names = []
-            outputs = []
-            for tool_call in tool_calls:
-                blocked = trigger_hooks(HookEvent.PreToolUse,tool_call)
-                if blocked:
-                    ids.append(tool_call.id), names.append(tool_call.name), outputs.append(f"Blocked by hook: {blocked}")
-                    continue
-                output = execute_tool(tool_call)
-                ids.append(tool_call.id), names.append(tool_call.name), outputs.append(output)
-                
-                # write_todo 使用
-                if tool_call.name == "write_todo":
-                    self.todo_active = True
-                    self.rounds_since_todo = 0
+            tool_message = execute_batch_tool(self, tool_calls)
             # messages 添加工具调用结果
-            tool_message = ToolMessage(id=ids,name=names,content=outputs)
-            trigger_hooks(HookEvent.PostToolUse,tool_message)
             messages.append(tool_message)
             
             
@@ -180,28 +164,8 @@ class ReActAgent(Agent):
                 consolidate_memories()
                 return ai_message.get_content()
 
-            ids = []
-            names = []
-            outputs = []
-            for tool_call in tool_calls:
-                blocked = trigger_hooks(HookEvent.PreToolUse, tool_call)
-                if blocked:
-                    ids.append(tool_call.id)
-                    names.append(tool_call.name)
-                    outputs.append(f"Blocked by hook: {blocked}")
-                    continue
-                output = execute_tool(tool_call)
-                ids.append(tool_call.id)
-                names.append(tool_call.name)
-                outputs.append(output)
-
-                # write_todo 使用
-                if tool_call.name == "write_todo":
-                    self.todo_active = True
-                    self.rounds_since_todo = 0
+            tool_message = execute_batch_tool(self, tool_calls)
             # messages 添加工具调用结果
-            tool_message = ToolMessage(id=ids,name=names,content=outputs)
-            trigger_hooks(HookEvent.PostToolUse,tool_message)
             messages.append(tool_message)
     
     

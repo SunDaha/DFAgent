@@ -1,7 +1,6 @@
 from dfagent.base.messages import ToolCall
 from dfagent.config.runtime_properties import WORKDIR
 
-
 DENY_LIST = ["rm -rf /", "sudo", "shutdown", "reboot", "mkfs", "dd if="]
 DESTRUCTIVE = ["rm ", "> /etc/", "chmod 777"]
 

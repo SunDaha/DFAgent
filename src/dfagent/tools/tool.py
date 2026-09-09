@@ -6,7 +6,7 @@ from typing import Callable,Any, get_origin, get_args, get_type_hints, Literal
 from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict, Field as PydanticField, create_model, ValidationError
 from dfagent.base.messages import ToolCall,ToolMessage
-
+from dfagent.hook.hooks import trigger_hooks,HookEvent
 
 
 # 作用: 获取参数类型
@@ -415,17 +415,20 @@ def execute_tool(tool_call:ToolCall) -> str:
     Args:
         tool_call (ToolCall): 待执行的工具（来自 AI 消息解析）
     """
-    info = get_tool_info(tool_call.name)
-    if info is None:
-        return tool_call.id, tool_call.name, f"Error: 未找到工具: {tool_call.name}"
+    tool_info = get_tool_info(tool_call.name)
+    if tool_info is None:
+        return f"Error: 未找到工具: {tool_call.name}"
     
-    _, result = info.execute(tool_call.args)
+    blocked = trigger_hooks(HookEvent.PreToolUse, tool_call)
+    if blocked:
+        return f"Blocked by hook: {blocked}"
+    _, result = tool_info.execute(tool_call.args)
     return str(result)
 
     
 
 
-def execute_batch_tool(tool_calls: list[ToolCall]) -> ToolMessage:
+def execute_batch_tool(agent, tool_calls: list[ToolCall]) -> ToolMessage:
     """执行一组工具调用，合并结果为一个 ToolMessage。
 
     对每个 ToolCall 查找注册的工具并校验、执行：
@@ -446,11 +449,29 @@ def execute_batch_tool(tool_calls: list[ToolCall]) -> ToolMessage:
     for tc in tool_calls:
         ids.append(tc.id)
         names.append(tc.name)
-        info = get_tool_info(tc.name)
-        if info is None:
+        
+        # 获取tool_info
+        tool_info = get_tool_info(tc.name)
+        if not tool_info:
             contents.append(f"Error: 未找到工具: {tc.name}")
             continue
-        _, result = info.execute(tc.args)
+        
+        # PreToolUse Hook
+        blocked = trigger_hooks(HookEvent.PreToolUse, tc)
+        if blocked:
+            contents.append(f"Blocked by hook: {blocked}")
+            continue
+        
+        # 执行方法
+        result = tool_info.execute(tc.args)
         contents.append(str(result))
-    return ToolMessage(id=ids, name=names, content=contents)
+        
+        if tc.name == "write_todo": 
+            agent.todo_active = True
+            agent.rounds_since_todo = 0
+        
+    tool_message = ToolMessage(id=ids, name=names, content=contents)
+    # PostToolUse Hook
+    trigger_hooks(HookEvent.PostToolUse,tool_message)
+    return tool_message
 
