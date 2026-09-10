@@ -62,14 +62,6 @@ class ToolCall:
     id:str
     name:str
     args:dict[str,Any]
-    
-    def get_name(self):
-        return self.name
-    
-    def get_args(self):
-        return self.args
-    
-    
 
 @dataclass
 class AIMessages(BaseMessage):

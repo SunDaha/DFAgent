@@ -15,8 +15,8 @@ def permission_check_hook(tool_call:ToolCall):
         None — 通过检查
         str  — 拒绝原因
     """
-    tool_name = tool_call.get_name()
-    tool_args = tool_call.get_args()
+    tool_name = getattr(tool_call.name, None)
+    tool_args = getattr(tool_call.args, None)
     
     # 1.bash检查
     if tool_name == "bash":
@@ -57,9 +57,9 @@ def permission_check_hook(tool_call:ToolCall):
 
 def log_hook(tool_call:ToolCall) -> None:
     """PreToolUse: 日志记录钩子。"""
-    tool_args = tool_call.get_args()
+    tool_args = getattr(tool_call.args, None)
     if tool_args:
         args_preview = list(tool_args.items())[:3]
-        print(f"\033[90m[HOOK] {tool_call.get_name()}, Argumenst: {args_preview} \033[0m")
+        print(f"\033[90m[HOOK] {getattr(tool_call.args, " ")}, Argumenst: {args_preview} \033[0m")
     return None
 
