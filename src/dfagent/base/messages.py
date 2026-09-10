@@ -15,6 +15,7 @@ from typing import Any
 @dataclass
 class BaseMessage:
     role: str
+    content: str
     
     def get_role(self):
         return self.role
@@ -31,7 +32,7 @@ class BaseMessage:
         """默认直接返回 to_dict()"""
         return self.to_dict()
 
-@dataclass
+
 class SystemMessage(BaseMessage):
     role: str = "system"
     content: str = ""
@@ -42,7 +43,7 @@ class SystemMessage(BaseMessage):
     def to_dict(self) -> dict[str,Any]:
         return {"role":"system","content":self.content}
 
-@dataclass
+
 class HumanMessage(BaseMessage):
     """用户消息。"""
     role: str = "user"
@@ -69,7 +70,7 @@ class ToolCall:
         return self.args
     
     
-    
+
 @dataclass
 class AIMessages(BaseMessage):
     """LLM 回答消息"""
@@ -78,6 +79,8 @@ class AIMessages(BaseMessage):
     text: str = ""
     id: str = ""
     tool_calls: list[ToolCall] | None = None
+    
+        
     
     def get_tool_calls(self):
         return self.tool_calls

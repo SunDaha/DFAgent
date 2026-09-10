@@ -8,7 +8,7 @@ from dfagent.prompt.prompt_builder import build_system
 from dfagent.context.context_compact import tool_result_budget, snip_compact, micro_compact, compact_history
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.memory.memory import extract_memories, consolidate_memories
-from dfagent.tools.tool import execute_tool,execute_batch_tool
+from dfagent.tools.tool_helper import execute_batch_tool,inject_background_results
 from dfagent.tools.write_todo_tool import CURRENT_TODOS
 
 class Agent:
@@ -75,7 +75,9 @@ class ReActAgent(Agent):
             messages[:] = snip_compact(messages)
             # 保留最近20条且长度小于120的调用工具的结果，其他结果使用占位符
             messages[:] = micro_compact(messages)
-                        
+            
+            # 注入后台运行完成的bash工具结果
+            inject_background_results(messages)
             # 2.发送对话
             try:
                 # write_todo 未完成且连续多轮未更新 → 追加提醒再对话
