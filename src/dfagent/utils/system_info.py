@@ -10,10 +10,6 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Annotated
-
-from dfagent.tools.tool import tool, Field
-
 
 def is_git_repo(path: Path) -> bool:
     """判断目录是否是 git 仓库（支持子目录：向上查 .git）。"""
