@@ -5,12 +5,9 @@ from dfagent.tools.tool_model import ToolInfo
 TOOL_REGISTRY: dict[str,ToolInfo] = {}
 
 
-
-
-tasks = dict["task_id":Task] = {}
+# Agent ID
 # {
 #      agent_id:身份
 #     "agent_ad22d2":"main"
 # }
 agent_name_registry:dict[str,str] = {}
-

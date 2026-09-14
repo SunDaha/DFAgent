@@ -38,7 +38,7 @@ class ToolInfo:
         try:
             return True, self.function(**param)
         except Exception as e:  # noqa: BLE001
-            return False, f"工具执行异常 [{type(e).__name__}]: {e}"
+            return False, f"Tool Call Error [{type(e).__name__}]: {e}"
 
 
 
