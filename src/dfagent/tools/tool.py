@@ -233,10 +233,6 @@ def convert_anthropic_tool(
 
 
 
-
-
-
-
 def tool(
     func: Callable | None = None,
     name: str | None = None,
@@ -343,22 +339,7 @@ def tool(
         return decorator(func)
     return decorator
 
-def get_tools_list() -> list[ToolInfo]:
-    return TOOL_REGISTRY.values()
 
-def get_tool_info(name:str) -> ToolInfo:
-    return TOOL_REGISTRY.get(name)
-
-
-def get_tool_function(name:str):
-    info = get_tool_info(name)
-    if info:
-        return info.function
-
-def get_tool_schema(name:str):
-    info = get_tool_info(name)
-    if info:
-        return info.args_schema
 
 
 

@@ -1,10 +1,30 @@
 from dfagent.tools import base_tools, context_retrieval, skills_tool, task_tools
 from dfagent.base.messages import BaseMessage, ToolCall, ToolMessage, HumanMessage
 from dfagent.base.tool_model import ToolInfo
-from dfagent.tools.tool import get_tool_info
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.tools.background import BACKGROUND
 from dfagent.app_state_store import TOOL_REGISTRY
+
+
+# ToolStore 基本操作
+def get_tools_list() -> list[ToolInfo]:
+    return TOOL_REGISTRY.values()
+
+def get_tool_info(name:str) -> ToolInfo:
+    return TOOL_REGISTRY.get(name)
+
+
+def get_tool_function(name:str):
+    info = get_tool_info(name)
+    if info:
+        return info.function
+
+def get_tool_schema(name:str):
+    info = get_tool_info(name)
+    if info:
+        return info.args_schema
+
+
 
 
 def get_base_tools() -> list[ToolInfo]:
