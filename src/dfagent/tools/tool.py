@@ -4,7 +4,7 @@ import typing
 import inspect
 from typing import Callable,Any, get_origin, get_args, get_type_hints, Literal
 from pydantic import BaseModel, ConfigDict, Field as PydanticField, create_model, ValidationError
-from dfagent.base.tool_model import ToolInfo
+from dfagent.tools.tool_model import ToolInfo
 from dfagent.app_state_store import TOOL_REGISTRY
 
 # 作用: 获取参数类型

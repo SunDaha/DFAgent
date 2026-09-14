@@ -1,6 +1,6 @@
 from dfagent.tools import base_tools, context_retrieval, skills_tool, task_tools
 from dfagent.base.messages import BaseMessage, ToolCall, ToolMessage, HumanMessage
-from dfagent.base.tool_model import ToolInfo
+from dfagent.tools.tool_model import ToolInfo
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.tools.background import BACKGROUND
 from dfagent.app_state_store import TOOL_REGISTRY

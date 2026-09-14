@@ -1,5 +1,5 @@
 from dfagent.task.task_model import Task, TaskStatus
-from dfagent.base.tool_model import ToolInfo
+from dfagent.tools.tool_model import ToolInfo
 
 #Tool
 TOOL_REGISTRY: dict[str,ToolInfo] = {}
