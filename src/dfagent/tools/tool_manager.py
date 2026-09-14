@@ -1,9 +1,32 @@
+from dfagent.tools import base_tools, context_retrieval, skills_tool, task_tools
 from dfagent.base.messages import BaseMessage, ToolCall, ToolMessage, HumanMessage
+from dfagent.base.tool_model import ToolInfo
 from dfagent.tools.tool import get_tool_info
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.tools.background import BACKGROUND
+from dfagent.app_state_store import TOOL_REGISTRY
 
-def should_run_background(tool_call:ToolCall) -> bool:
+
+def get_base_tools() -> list[ToolInfo]:
+    return [TOOL_REGISTRY["bash"],
+            TOOL_REGISTRY["read"],
+            TOOL_REGISTRY["write"],
+            TOOL_REGISTRY["edit"],
+            TOOL_REGISTRY["glob"],
+            TOOL_REGISTRY["grep"]]
+
+def get_todo_tools() -> list[ToolInfo]:
+    return [TOOL_REGISTRY["write_todo"]]
+
+def get_context_tools() -> list[ToolInfo]:
+    return [TOOL_REGISTRY["retrieve_tool_result"]]
+
+def get_skills_tools() -> list[ToolInfo]:
+    return [TOOL_REGISTRY["load_skill"]]
+
+
+
+def _should_run_background(tool_call:ToolCall) -> bool:
     return tool_call.name == "bash" and tool_call.args.get("run_in_background",False)
 
 
@@ -73,7 +96,7 @@ def execute_batch_tool(agent, tool_calls: list[ToolCall]) -> ToolMessage:
             contents.append(f"Blocked by hook: {blocked}")
             continue
         
-        if should_run_background(tc):
+        if _should_run_background(tc):
             try:
                 task_id = BACKGROUND.start(tool_call=tc, tool_info=tool_info)
                 contents.append(f"[Background task {task_id} started],The result will be collected on a later turn.")

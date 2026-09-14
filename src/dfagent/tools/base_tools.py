@@ -2,7 +2,6 @@ import subprocess
 import glob
 from dfagent.tools.tool import tool
 from pathlib import Path
-from typing import Annotated
 
 WORKDIR = Path.cwd()
 

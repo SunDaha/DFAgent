@@ -1,5 +1,5 @@
 from dfagent.tools.tool import tool
-from dfagent.task.task_helper import create_task, update_task, list_tasks, claim_task, complete_task
+from dfagent.agent_team.team_manager import create_task, update_task, list_tasks, claim_task, complete_task
 
 
 @tool(name="create_task")
