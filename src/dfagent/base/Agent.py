@@ -10,7 +10,7 @@ from dfagent.prompt.prompt_builder import build_system
 from dfagent.context.context_compact import tool_result_budget, snip_compact, micro_compact, compact_history
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.memory.memory import extract_memories, consolidate_memories
-from dfagent.tools.tool import execute_batch_tool,inject_background_results
+from dfagent.tools.tool_manager import execute_batch_tool,inject_background_results
 from dfagent.tools.write_todo_tool import CURRENT_TODOS
 
 class Agent:
