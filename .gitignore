@@ -19,6 +19,7 @@ wheels/
 
 #Test
 test/
+demo/
 
 #Config
 .env
