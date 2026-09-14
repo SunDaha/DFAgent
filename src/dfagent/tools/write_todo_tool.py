@@ -1,10 +1,30 @@
 from dfagent.tools.tool import tool, Field
+from dataclasses import dataclass,field
 from typing import Annotated
-import ast ,json
+import ast ,json, copy
 
 
+@dataclass
+class TodoState:
+    """单个 Agent 独有的任务列表状态。"""
 
-CURRENT_TODOS: list[dict] = []
+    items: list[dict] = field(default_factory=list)
+    rounds_since_update: int = 0
+    active: bool = False
+
+    def has_incomplete(self) -> bool:
+        """todo 是否仍未执行完：存在 pending / in_progress 任务即视为未完。"""
+        return any(
+            isinstance(item, dict)
+            and item.get("status") in ("pending", "in_progress")
+            for item in self.items
+        )
+
+    def replace(self, items: list[dict]) -> None:
+        self.items = copy.deepcopy(items)
+        self.rounds_since_update = 0
+        self.active = bool(self.items)
+
 
 
 def _normalize_todos(todos): 
@@ -56,16 +76,13 @@ def run_write_todo_tool(
         }
     )]
 ) -> str:
-    global CURRENT_TODOS
-    todos ,error = _normalize_todos(todos)
+    todos, error = _normalize_todos(todos)
     if error:
         return error
-    CURRENT_TODOS = todos
     lines = ["\n\033[33m## Current Tasks\033[0m"]
-    for t in CURRENT_TODOS:
+    for t in todos:
         icon = {"pending": " ", "in_progress": "\033[36m▸\033[0m", "completed": "\033[32m✓\033[0m", "cancelled": "\033[31m✗\033[0m"}[t["status"]]
         lines.append(f"  [{icon}] {t['task']}")
     print("\n".join(lines))
-    return f"Updated {len(CURRENT_TODOS)} tasks"
-
+    return f"Updated {len(todos)} tasks"
 

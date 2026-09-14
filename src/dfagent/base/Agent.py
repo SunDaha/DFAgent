@@ -11,7 +11,7 @@ from dfagent.context.context_compact import tool_result_budget, snip_compact, mi
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.memory.memory import extract_memories, consolidate_memories
 from dfagent.tools.tool_manager import execute_batch_tool,inject_background_results
-from dfagent.tools.write_todo_tool import CURRENT_TODOS
+from dfagent.tools.write_todo_tool import TodoState
 
 class Agent:
     id:str
@@ -24,42 +24,43 @@ class Agent:
         return f"agent_{random_str}"
     
 class ReActAgent(Agent):
-    # write_todo param
-    rounds_since_todo = 0
-    todo_active = False            # 是否已用过 write_todo（打过标记）
     todo_remind_interval = 3       # 连续多少轮未用 write_todo 触发提醒
-
-    # retries
-    reactive_retries = 0
 
     def __init__(self, 
                  client: OpenAI | Anthropic,         # LLM client
                  model_name:str | None = None,       # 模型名字
                  thinking_effort:str | None = None,  # 思考
-                 tools:list[dict] | None = [],       # 基础工具
+                 tools:list[dict] | None = None,      # 基础工具
                  ):
+        # 命名ID
         self.id = self.generate_agent_id()
+        
         # 封装model
-        self.model = Model(client=client, model=model_name, tools=tools, thinking_effort=thinking_effort)
-    @staticmethod
-    def _todo_incomplete() -> bool:
-        """todo 是否仍未执行完：存在 pending / in_progress 任务即视为未完。"""
-        return any(
-            isinstance(t, dict) and t.get("status") in ("pending", "in_progress")
-            for t in CURRENT_TODOS
+        self.model = Model(
+            client=client,
+            model=model_name,
+            tools=tools or [],
+            thinking_effort=thinking_effort,
         )
+        
+        # write_todo 状态
+        self.todo_state = TodoState()
+        
+        # 当前错误重试次数
+        self.reactive_retries = 0
+
 
     def _maybe_remind_write_todo(self, messages: list[BaseMessage]):
         """todo 未完成且连续多轮未用 write_todo 时，在末尾追加提醒。"""
-        if not self.todo_active or not self._todo_incomplete():
-            self.todo_active = False
+        if not self.todo_state.active or not self.todo_state.has_incomplete():
+            self.todo_state.active = False
             return
-        if self.rounds_since_todo >= self.todo_remind_interval:
+        if self.todo_state.rounds_since_update >= self.todo_remind_interval:
             messages.append(HumanMessage(
-                content="当前任务列表尚未全部完成，且已连续多轮未调用 write_todo 更新进度。"
-                        "请本轮使用 write_todo 工具同步任务状态后继续推进。"
+                content="The current task list has not yet been fully completed, and `write_todo` has not been called to update progress for several consecutive rounds."
+                        "Please proceed after using the `write_todo` tool to synchronize task statuses in this round."
             ))
-            self.rounds_since_todo = 0
+            self.todo_state.rounds_since_update = 0
 
 
     def _loop_openai(self, messages:list[BaseMessage]):
@@ -107,8 +108,8 @@ class ReActAgent(Agent):
             
             # 3.调用工具
             # write_todo 循环 + 1
-            if self.todo_active:
-                self.rounds_since_todo += 1
+            if self.todo_state.active:
+                self.todo_state.rounds_since_update += 1
             tool_calls = ai_message.get_tool_calls()
             # 无工具调用停止循环
             if not tool_calls:
@@ -117,7 +118,7 @@ class ReActAgent(Agent):
                 consolidate_memories()
                 return ai_message.get_content()
             
-            tool_message = execute_batch_tool(self, tool_calls)
+            tool_message = execute_batch_tool(tool_calls=tool_calls, todo_state=self.todo_state)
             # messages 添加工具调用结果
             messages.append(tool_message)
             

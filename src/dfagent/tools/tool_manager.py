@@ -1,10 +1,10 @@
 from dfagent.tools import base_tools, context_retrieval, skills_tool, task_tools
 from dfagent.base.messages import BaseMessage, ToolCall, ToolMessage, HumanMessage
 from dfagent.tools.tool_model import ToolInfo
+from dfagent.tools.write_todo_tool import TodoState
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.tools.background import BACKGROUND
 from dfagent.app_state_store import TOOL_REGISTRY
-
 
 # ToolStore 基本操作
 def get_tools_list() -> list[ToolInfo]:
@@ -82,7 +82,7 @@ def execute_tool(tool_call:ToolCall) -> str:
 
 
 
-def execute_batch_tool(agent, tool_calls: list[ToolCall]) -> ToolMessage:
+def execute_batch_tool(tool_calls: list[ToolCall], todo_state: TodoState | None = None) -> ToolMessage:
     """执行一组工具调用，合并结果为一个 ToolMessage。
 
     对每个 ToolCall 查找注册的工具并校验、执行：
@@ -121,17 +121,19 @@ def execute_batch_tool(agent, tool_calls: list[ToolCall]) -> ToolMessage:
                 task_id = BACKGROUND.start(tool_call=tc, tool_info=tool_info)
                 contents.append(f"[Background task {task_id} started],The result will be collected on a later turn.")
             except Exception as e:
-                contents.append = f"Error: {e}"
+                contents.append(f"Error: {type(e).__name__}: {e}")
             continue
         
         # 执行方法
-        result = tool_info.execute(tc.args)
+        success, result = tool_info.execute(tc.args)
         contents.append(str(result))
         
-        if tc.name == "write_todo": 
-            agent.todo_active = True
-            agent.rounds_since_todo = 0
-        
+        # 标记 write_todo 工具
+        if todo_state and success and tc.name == "write_todo":
+            todo_list = tc.args["todos"]
+            if isinstance(todo_list, list):
+                todo_state.replace(todo_list)
+         
     tool_message = ToolMessage(id=ids, name=names, content=contents)
     # PostToolUse Hook
     trigger_hooks(HookEvent.PostToolUse,tool_message)
