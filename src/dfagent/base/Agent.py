@@ -16,6 +16,8 @@ from dfagent.tools.write_todo_tool import TodoState
 class Agent:
     id:str
     model: Model
+
+    @staticmethod
     def generate_agent_id(length=6):
         # 定义字符集：小写字母 + 数字
         chars = string.ascii_lowercase + string.digits
@@ -64,6 +66,8 @@ class ReActAgent(Agent):
 
 
     def _loop_openai(self, messages:list[BaseMessage]):
+        if not messages:
+            raise ValueError("Messages cannot be empty")
         # 用户提示词输入钩子
         if isinstance(messages[-1],HumanMessage):
             trigger_hooks(HookEvent.UserPromptSubmit,messages)

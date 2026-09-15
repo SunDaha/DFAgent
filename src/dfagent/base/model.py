@@ -24,12 +24,12 @@ class Model:
     def __init__(self, 
                  client: OpenAI | Anthropic | None = None, 
                  model: str | None = None, 
-                 tools:list[dict] | None = [],
+                 tools:list[dict] | None = None,
                  thinking_effort:str | None = None,
                  ) -> None:
         self.client = client or _global_client
         self.model = model or _global_model
-        self.tools = tools
+        self.tools = tools or []
         self.thinking_effort = thinking_effort
     def chat(self, messages: list[BaseMessage], max_tokens: int = 4096) -> AIMessages:
         """发起一次对话，返回 AIMessages。"""

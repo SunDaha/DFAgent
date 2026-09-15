@@ -139,6 +139,8 @@ def create_worktree(name: str) -> str:
     if not ok:
         return f"Git error: {result}"
     
+    return f"Worktree '{name}' created at {path}"
+    
 def remove_worktree(name: str, force: bool = False) -> str:
     try:
         path = _worktree_path(name)

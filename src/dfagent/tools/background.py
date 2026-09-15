@@ -39,8 +39,10 @@ class BackgroundManager:
     
     def _run(self, task_id:str, function:Callable, param:dict):
         try:
-            result = function(param)
-            status = "completed"
+            success, result = function(param)
+            status = "completed" if success else "failed"
+            if not success:
+                result = f"Error: {result}"
         except Exception as e:
             result = f"Error: {type(e).__name__}: {e}"
             status = "failed"
@@ -50,7 +52,7 @@ class BackgroundManager:
             if task is None:
                 return
             task["status"] = status
-            self.results[task_id] = result
+            self.results[task_id] = str(result)
             self._ready.append(task_id)
     
     def collect(self) -> list[str]:

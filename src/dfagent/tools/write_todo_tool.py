@@ -1,7 +1,8 @@
 from dfagent.tools.tool import tool, Field
 from dataclasses import dataclass,field
-from typing import Annotated
+from typing import Annotated, Literal
 import ast ,json, copy
+from pydantic import BaseModel, ConfigDict, Field as PydanticField
 
 
 @dataclass
@@ -26,6 +27,15 @@ class TodoState:
         self.active = bool(self.items)
 
 
+class TodoItem(BaseModel):
+    """单个 Todo 项，负责运行时结构校验。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    task: str = PydanticField(min_length=1)
+    status: Literal["pending", "in_progress", "completed", "cancelled"]
+
+
 
 def _normalize_todos(todos): 
     if isinstance(todos, str):
@@ -40,20 +50,20 @@ def _normalize_todos(todos):
     if not isinstance(todos, list):
         return None, "Error: todos must be a list"
 
-    for i, t in enumerate(todos):
-        if not isinstance(t, dict):
-            return None, f"Error: todos[{i}] must be an object"
-        if "task" not in t or "status" not in t:
-            return None, f"Error: todos[{i}] missing 'task' or 'status'"
-        if t["status"] not in ("pending", "in_progress", "completed", "cancelled"):
-            return None, f"Error: todos[{i}] has invalid status '{t['status']}'"
-    return todos, None
+    normalized = []
+    for i, item in enumerate(todos):
+        try:
+            todo = item if isinstance(item, TodoItem) else TodoItem.model_validate(item)
+        except Exception as error:
+            return None, f"Error: todos[{i}] is invalid: {error}"
+        normalized.append(todo.model_dump())
+    return normalized, None
 
 
 
 @tool(name="write_todo", description="Create and manage the task list for the current session. Replace the old list with each call to pass the complete task list.")
 def run_write_todo_tool(
-    todos: Annotated[list, Field(
+    todos: Annotated[list[TodoItem], Field(
         description="Complete list of all current tasks",
         json_schema={
             "items": {
@@ -78,11 +88,10 @@ def run_write_todo_tool(
 ) -> str:
     todos, error = _normalize_todos(todos)
     if error:
-        return error
+        raise ValueError(f"Error:{error}")
     lines = ["\n\033[33m## Current Tasks\033[0m"]
     for t in todos:
         icon = {"pending": " ", "in_progress": "\033[36m▸\033[0m", "completed": "\033[32m✓\033[0m", "cancelled": "\033[31m✗\033[0m"}[t["status"]]
         lines.append(f"  [{icon}] {t['task']}")
     print("\n".join(lines))
     return f"Updated {len(todos)} tasks"
-
