@@ -1,7 +1,7 @@
 from dfagent import WORKDIR
 from dfagent.skills.load_skills import list_skills
 from dfagent.memory.memory import read_memory_index, load_memories
-from dfagent.base.messages import BaseMessage
+from dfagent.base.messages import BaseMessage, SystemMessage
 from dfagent.memory.memory import read_memory_index
 from dfagent.utils.system_info import is_git_repo, get_shell, get_platform, get_os_version
 
@@ -71,7 +71,7 @@ def build_system(messages:list[BaseMessage]):
     "Respect user preferences from memory, but the current request takes priority.
     """
     
-    system_prompt = "\n\n".join([
+    system_prompt = SystemMessage(content="\n\n".join([
         agent_identity,
         harness,
         session_specific_guidance,
@@ -80,6 +80,8 @@ def build_system(messages:list[BaseMessage]):
         context,
         skills,
         relevant_memories,
-    ])
-
-    return system_prompt
+    ]))
+    if messages and messages[0].get_role() == "system":
+        messages[0] = system_prompt
+    else:
+        messages.insert(0,system_prompt)

@@ -30,7 +30,7 @@ class ReActAgent(Agent):
                  client: OpenAI | Anthropic,         # LLM client
                  model_name:str | None = None,       # 模型名字
                  thinking_effort:str | None = None,  # 思考
-                 tools:list[dict] | None = None,      # 基础工具
+                 tools:list[dict] | None = None,     # 基础工具
                  ):
         # 命名ID
         self.id = self.generate_agent_id()
@@ -69,11 +69,7 @@ class ReActAgent(Agent):
             trigger_hooks(HookEvent.UserPromptSubmit,messages)
         
         # 构建系统词语
-        system_prompt = SystemMessage(content=build_system(messages))
-        if messages and messages[0].get_role() == "system":
-            messages[0] = system_prompt
-        else:
-            messages.insert(0,system_prompt)
+        build_system(messages)
             
         while True:
             # 1.上文压缩
