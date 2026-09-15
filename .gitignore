@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+#docs
+docs
+
 # Agent
 .claude
 .serena
