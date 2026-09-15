@@ -1,4 +1,3 @@
-from dfagent.task.task_model import Task, TaskStatus
 from dfagent.tools.tool_model import ToolInfo
 
 #Tool
