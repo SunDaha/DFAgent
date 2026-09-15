@@ -58,12 +58,12 @@ def _worktree_branch(name: str) -> str:
 
 
 def _get_all_worktrees() -> tuple[dict[Path, dict[str, str]], str | None]:
-    ok, output = run_git(["worktree", "list", "--porcelain"])
+    ok, result = run_git(["worktree", "list", "--porcelain"])
     if not ok:
-        return {}, f"cannot read Git worktree registry: {output}"
+        return {}, f"cannot read Git worktree registry: {result}"
     entries: dict[Path, dict[str, str]] = {}
     current: dict[str, str] = {}
-    for line in output.splitlines() + [""]:
+    for line in result.splitlines() + [""]:
         if not line:
             raw_path = current.get("worktree")
             if raw_path:
@@ -95,8 +95,6 @@ def get_worktree(name: str) -> tuple[Path | None, str | None]:
 
 
 
-
-
 def create_worktree(name: str) -> str:
     # 1.验证工作目录名字
     error= vaild_worktree_name(name)
@@ -112,13 +110,13 @@ def create_worktree(name: str) -> str:
     
     if path.exists():
         return f"Error: Worktree path already exists: {path}"
-    ok, output = run_git(["rev-parse", "--show-toplevel"])
-    if not ok or Path(output).resolve() != WORKDIR.resolve():
+    ok, result = run_git(["rev-parse", "--show-toplevel"])
+    if not ok or Path(result).resolve() != WORKDIR.resolve():
         return "Error: Working directory must be the root of a Git repository"
     ok, _ = run_git(["check-ref-format", "--branch", branch])
     if not ok:
         return f"Error: Invalid branch '{branch}'"
-    
+
     exists, _ = run_git([
         "show-ref",
         "--verify",
@@ -142,11 +140,26 @@ def create_worktree(name: str) -> str:
         return f"Git error: {result}"
     
 def remove_worktree(name: str, force: bool = False) -> str:
-    path = _worktree_path(name)
+    try:
+        path = _worktree_path(name)
+        branch = _worktree_branch(name)
+    except Exception as error:
+        return f"Error: {error}"    
+    
     args = ["worktree", "remove"]
     if force:
         args.append("--force")
     args.append(str(path))
+    # 删除 worktree
+    ok, result = run_git(args)
+    if not ok:
+        return f"Git error: {result}"
+    
+    # 删除 branch
+    args = ["branch", "--delete"]
+    if force:
+        args.append("--force")
+    args.append(branch)
     ok, result = run_git(args)
     if not ok:
         return f"Git error: {result}"
