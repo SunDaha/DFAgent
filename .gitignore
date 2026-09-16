@@ -26,6 +26,9 @@ demo/
 
 #Config
 .env
+.config.json
+.mcp.json
+
 
 
 

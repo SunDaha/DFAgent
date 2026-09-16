@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "my-mcp-server": {
+      "type": "local",
+      "command": ["npx", "-y", "xxx"],
+      "enabled": true
+    },
+    "another-mcp-server": {
+      "type": "remote",
+      "url": "https://100.89.134.106:8000",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer MY_API_KEY"
+      }
+    }
+  }
+}
