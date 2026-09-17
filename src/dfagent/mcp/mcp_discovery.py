@@ -346,6 +346,22 @@ class MCPDiscovery:
     def get_client(self, name: str) -> MCPClient | None:
         return self.clients.get(name)
 
+    def list_tools(self) -> dict[str, list[dict]]:
+        """返回当前发现结果的工具快照。
+
+        实现放在 ``mcp_handler``，这里通过局部导入提供面向对象的兼容入口，
+        避免模块初始化时形成循环依赖。
+        """
+        from dfagent.mcp.mcp_handler import list_tools
+
+        return list_tools(self)
+
+    def to_tool_infos(self, return_direct: bool = True) -> list[ToolInfo]:
+        """把当前发现的全部工具转换为 ``ToolInfo`` 列表。"""
+        from dfagent.mcp.mcp_handler import to_tool_infos
+
+        return to_tool_infos(self, return_direct)
+
     def close(self) -> None:
         """关闭全部已装载的客户端。"""
         for client in self.clients.values():

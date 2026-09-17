@@ -1,4 +1,5 @@
-from dfagent.tools import base_tools, context_retrieval, skills_tool, task_tools
+from dfagent.tools import base_tools, context_retrieval, skills_tool
+from dfagent.tools import load_tool, search_tool  # noqa: F401 - 触发工具注册
 from dfagent.base.messages import BaseMessage, ToolCall, ToolMessage, HumanMessage
 from dfagent.tools.tool_model import ToolInfo
 from dfagent.tools.write_todo_tool import TodoState
@@ -43,6 +44,15 @@ def get_context_tools() -> list[ToolInfo]:
 
 def get_skills_tools() -> list[ToolInfo]:
     return [TOOL_REGISTRY["load_skill"]]
+
+
+def get_dynamic_tools() -> list[ToolInfo]:
+    """返回动态工具入口；具体 MCP 工具由 ``load_tool`` 按需加入注册表。"""
+    return [
+        TOOL_REGISTRY[name]
+        for name in ("search_tool", "load_tool")
+        if name in TOOL_REGISTRY
+    ]
 
 
 

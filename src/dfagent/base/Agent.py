@@ -10,7 +10,12 @@ from dfagent.prompt.prompt_builder import build_system
 from dfagent.context.context_compact import tool_result_budget, snip_compact, micro_compact, compact_history
 from dfagent.hook.hooks import trigger_hooks, HookEvent
 from dfagent.memory.memory import extract_memories, consolidate_memories
-from dfagent.tools.tool_manager import execute_batch_tool,inject_background_results
+from dfagent.tools.tool_manager import (
+    execute_batch_tool,
+    get_dynamic_tools,
+    inject_background_results,
+)
+from dfagent.mcp.mcp_handler import get_loaded_mcp_tool_infos
 from dfagent.tools.write_todo_tool import TodoState
 
 class Agent:
@@ -44,12 +49,47 @@ class ReActAgent(Agent):
             tools=tools or [],
             thinking_effort=thinking_effort,
         )
+        self._refresh_dynamic_tools()
         
         # write_todo 状态
         self.todo_state = TodoState()
         
         # 当前错误重试次数
         self.reactive_retries = 0
+
+    def _refresh_dynamic_tools(self) -> None:
+        """把动态工具入口及已加载 MCP 工具追加到模型工具列表。
+
+        ``Model`` 持有的是工具 schema 快照，因此 ``load_tool`` 成功后必须
+        在下一轮请求前刷新一次；已由调用方传入的工具保持不变。
+        """
+        if isinstance(self.model.client, Anthropic):
+            definitions = [
+                info.get_anthropic_def() for info in get_dynamic_tools()
+            ] + [
+                info.get_anthropic_def() for info in get_loaded_mcp_tool_infos()
+            ]
+        else:
+            definitions = [
+                info.get_openai_def() for info in get_dynamic_tools()
+            ] + [
+                info.get_openai_def() for info in get_loaded_mcp_tool_infos()
+            ]
+
+        existing_names: set[str] = set()
+        for definition in self.model.tools:
+            if definition.get("type") == "function":
+                name = definition.get("function", {}).get("name")
+            else:
+                name = definition.get("name")
+            if name:
+                existing_names.add(name)
+        self.model.tools.extend(
+            definition for definition in definitions
+            if (definition.get("function", {}).get("name")
+                if definition.get("type") == "function"
+                else definition.get("name")) not in existing_names
+        )
 
 
     def _maybe_remind_write_todo(self, messages: list[BaseMessage]):
@@ -90,6 +130,7 @@ class ReActAgent(Agent):
             inject_background_results(messages)
             # 2.发送对话
             try:
+                self._refresh_dynamic_tools()
                 # write_todo 未完成且连续多轮未更新 → 追加提醒再对话
                 self._maybe_remind_write_todo(messages)
                 ai_message = self.model.chat(messages,max_tokens=100000)
