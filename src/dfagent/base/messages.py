@@ -133,6 +133,26 @@ class AIMessages(BaseMessage):
 
 
 
+@dataclass
+class StreamEvent:
+    """流式输出的单条事件（``Model.stream_chat`` 的产出单元）。
+
+    - ``text`` / ``thinking``：正文或思考内容的增量片段，``text`` 字段承载
+    - ``tool_call_delta``：工具调用参数的增量片段，``args_delta`` 是一段未完整的
+      JSON 字符串，``index`` 用于区分同一次响应中的多个工具调用；
+      ``id`` / ``name`` 在首个分片即给出
+    - ``done``：流结束，``message`` 为聚合后的 ``AIMessages``，与 ``chat()`` 返回值同构
+    """
+
+    type: str
+    text: str = ""
+    index: int = -1
+    id: str = ""
+    name: str = ""
+    args_delta: str = ""
+    message: AIMessages | None = None
+
+
 class ToolMessage(BaseMessage):
     """是多个工具调用结果的列表"""
     role: str = "tool"
